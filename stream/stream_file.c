@@ -33,6 +33,10 @@
 #include "stream.h"
 #include "mpvcore/m_option.h"
 
+#ifdef __APPLE__
+#include <sys/xattr.h>
+#endif
+
 struct priv {
     int fd;
     bool close;
@@ -141,6 +145,12 @@ static int open_f(stream_t *stream, int mode)
         mode_t openmode = S_IRUSR | S_IWUSR;
 #ifndef __MINGW32__
         openmode |= S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH;
+#endif
+#ifdef __APPLE__
+        // quarantine mode is causing strange bugs where OS X dopesn't ask us
+        // to unquarantine the file before opening it (most likely because we
+        // use open) directly instead of the higher level Cocoa APIs.
+        removexattr(filename, "com.apple.quarantine", 0);
 #endif
         fd = open(filename, m | O_BINARY, openmode);
         if (fd < 0) {
